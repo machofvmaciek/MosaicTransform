@@ -6,13 +6,16 @@ import numpy as np
 
 from pathlib import Path
 
+# Constants
 DIR_BASE = Path().absolute()
 DIR_IMAGES = DIR_BASE / "images"
+GRID_SIZE = 20
 
 def getSample():
     """Function used to load sample image
     """
     PATH_IMG = DIR_BASE / "dog_1.png"
+    PATH_IMG = DIR_BASE / "combo.png"
     
     try:
         img = cv2.imread(str(PATH_IMG))
@@ -35,6 +38,7 @@ def getImages():
     for file in FILES:
         try:
             images.append(cv2.imread(str(file)))
+            print(file)
         except:
             print(f"Failed to open {file}")
             sys.exit()
@@ -83,15 +87,50 @@ def divideImage(img, N=20):
 
 def getClosestColor(colors_list, color):
     colors_list = np.array(colors_list)
+    print(f"colors list \n{colors_list}")
     color = np.array(color)
     distances = np.sqrt(np.sum((colors_list - color)**2, axis=1))
 
     index_of_smallest_dist = np.where(distances==np.amin(distances))
+    print(f"index_of_smallest_dist {index_of_smallest_dist}")
+
     smallest_dist = colors_list[index_of_smallest_dist]
     smallest_dist = smallest_dist[0]
+    print(f"smallest dist {smallest_dist}")
     # print(smallest_dist[::-1])
     
-    return int(index_of_smallest_dist[0]), smallest_dist[::-1]
+    return int(index_of_smallest_dist[0]), smallest_dist
+    # return None, smallest_dist
+    # return int(index_of_smallest_dist[0]), smallest_dist
+
+def getAverageRGB(image):
+    im = np.array(image)
+    w, h, d = im.shape
+    return (tuple(np.average(im.reshape(w * h, d), axis=0)))
+
+def pickSubImage(imgs, img):
+
+    img = cv2.resize(imgs[0], [img.shape[1], img.shape[0]])
+    return img
+
+def createImgFromCells(cells, org_img, N):
+    """Function converting list of cells into image with corresponding shape as org_img
+    """
+    # Create yet empty Array to store reproduced Image
+    img = np.empty_like(org_img)
+
+    # List containing rows of new Image
+    img_rows = []
+
+    # Create rows of new Image and write them into a list
+    for i in range(N):
+        img_rows.append(np.concatenate(cells[(i*N):(i*N+N)], axis=1))
+
+    # Transform rows into Image
+    img = np.concatenate(img_rows)
+
+    cv2.imshow("img new", img)
+    return img
 
 sample_img = getSample()
 
@@ -99,45 +138,34 @@ cv2.imshow("Original image", sample_img)
 # sample_img = cv2.resize(sample_img, [600, 480])
 
 images = getImages()
-sample_cells = divideImage(sample_img)
+sample_cells = divideImage(sample_img, N=GRID_SIZE)
 
 images_colors = getColorsOfImages(images)
 
-print(f"images color outside func{images_colors}")
-
+# Epty list to store cells of new image
+img_new_cells = []
 
 for i,cell in enumerate(sample_cells):
+
     cell_color = getDominantColor(cell)
+
     print(f"cell color {cell_color}")
-    cv2.imshow("cell", cell)
 
-    # closest_color_index, closest_color = list(getClosestColor(images_colors, cell_color))
-    closest_color_index, closest_color = getClosestColor(images_colors, cell_color)
-    print(f"closest color to cell {closest_color}")
-    print(f"index of closest color to cell {closest_color_index}")
-    print("----------")
-    cv2.imshow("dopasowanie", images[closest_color_index])
-    print(images_colors[closest_color_index])
+    # _, closestcolor = getClosestColor(images_colors, cell_color)
+    # cv2.imshow(f"{closestcolor}", cell)
+
+    # Replace current cell with new Image
+    img_new_cells.append(pickSubImage(images, cell))
+    # img_new_cells.append(sample_cells[i])
 
 
-    # closest_color_index = images_colors.index(closest_color)
-    # print(closest_color_index)
+    # if i==4:
+    #     break
+
+img_new = createImgFromCells(img_new_cells, sample_img, GRID_SIZE)
 
 
-
-    if i==0:
-        break
-
-
-
-# # print(images_colors)
-# for color in images_colors:
-#     print(color)
-#     closest_color = getClosestColor(images_colors, color)
-#     print("--------------")
-
-# print(images[index_closest_color])
-
+cv2.imshow("cell 0", img_new_cells[0])
 cv2.waitKey()
 cv2.destroyAllWindows()
 
