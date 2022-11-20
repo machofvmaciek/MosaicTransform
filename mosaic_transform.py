@@ -5,24 +5,30 @@ import random
 import numpy as np
 
 from pathlib import Path
+from scipy import spatial
 
 # Constants
 DIR_BASE = Path().absolute()
 DIR_IMAGES = DIR_BASE / "images"
 DIR_POKEMONS = DIR_BASE / "pokemon_dataset"
 DIR_FLOWERS = DIR_BASE / "flowers"
-DIR_TREES = DIR_BASE / "TREES"
+DIR_TREES = DIR_BASE / "Trees"
+DIR_BUTTERFLIES = DIR_BASE / "butterflies"
+DIR_PEOPLES = DIR_BASE / "Peoples"
 
-DIR_DATASET = DIR_TREES
-GRID_SIZE = 100
+DIR_DATASET = DIR_FLOWERS
+GRID_SIZE = 250
 
 def getSample():
     """Function used to load sample image
     """
     # PATH_IMG = DIR_BASE / "dog_1.png"
     # PATH_IMG = DIR_BASE / "combo.png"
-    PATH_IMG = DIR_BASE / "kfc.png"
+    # PATH_IMG = DIR_BASE / "kfc.png"
     PATH_IMG = DIR_BASE / "Tree.jpg"
+    # PATH_IMG = DIR_BASE / "butterfly.jpg"
+    # PATH_IMG = DIR_BASE / "tree_synt.png"
+    PATH_IMG = DIR_BASE / "tony1.png"
     
     try:
         img = cv2.imread(str(PATH_IMG))
@@ -109,6 +115,18 @@ def getClosestColor(colors_list, color):
     
     # return int(index_of_smallest_dist[0][0])
     return index_of_smallest_dist[0][0]
+def getClosestColorMine(colors_list, color):
+    """Function returning index and dominant color of image with closest dominant color
+    """
+    errors = []
+    for color_in_list in colors_list:
+        errors.append((int((color_in_list[0] - color[0]))**2 + int((color_in_list[1] - color[1]))**2 + int((color_in_list[2] - color[2]))**2)**(0.5))
+        # errors.append(((color_in_list[0] - color [0])/2)**2 + ((color_in_list[1] - color [1])/2)**2 + ((color_in_list[2] - color [2])/2)**2)
+    
+    min_err = min(errors)
+    min_err_index = errors.index(min_err)
+
+    return min_err_index
 
 def pickSubImage(imgs, img, colors_list):
     """Function choosing image to replace original image based on dominant BGR color
@@ -117,7 +135,8 @@ def pickSubImage(imgs, img, colors_list):
     img_color = getDominantColor(img)
 
     # Get index of image with closes dominant BGR color
-    closest_img_index = getClosestColor(colors_list, img_color)
+    # closest_img_index = getClosestColor(colors_list, img_color)
+    closest_img_index = getClosestColorMine(colors_list, img_color)
 
     # Resize chosen image to match size of cell
     img = cv2.resize(imgs[closest_img_index], [img.shape[1], img.shape[0]])
