@@ -15,20 +15,21 @@ DIR_FLOWERS = DIR_BASE / "flowers"
 DIR_TREES = DIR_BASE / "Trees"
 DIR_BUTTERFLIES = DIR_BASE / "butterflies"
 DIR_PEOPLES = DIR_BASE / "Peoples"
+DIR_DOGS = DIR_BASE / "dogs"
 
-DIR_DATASET = DIR_FLOWERS
-GRID_SIZE = 250
+DIR_DATASET = DIR_DOGS
+GRID_SIZE = 120
 
 def getSample():
     """Function used to load sample image
     """
-    # PATH_IMG = DIR_BASE / "dog_1.png"
+    PATH_IMG = DIR_BASE / "dog_1.png"
     # PATH_IMG = DIR_BASE / "combo.png"
     # PATH_IMG = DIR_BASE / "kfc.png"
-    PATH_IMG = DIR_BASE / "Tree.jpg"
+    # PATH_IMG = DIR_BASE / "Tree.jpg"
     # PATH_IMG = DIR_BASE / "butterfly.jpg"
     # PATH_IMG = DIR_BASE / "tree_synt.png"
-    PATH_IMG = DIR_BASE / "tony1.png"
+    # PATH_IMG = DIR_BASE / "tony1.png"
     
     try:
         img = cv2.imread(str(PATH_IMG))
@@ -128,7 +129,12 @@ def getClosestColorMine(colors_list, color):
 
     return min_err_index
 
-def pickSubImage(imgs, img, colors_list):
+def getClosestImage(colors_list, color, TREE) :
+    closest = TREE.query(color)
+
+    return closest[1]
+
+def pickSubImage(imgs, img, colors_list, TREE):
     """Function choosing image to replace original image based on dominant BGR color
     """
     # Calculate domiant RGB color of given image
@@ -136,8 +142,8 @@ def pickSubImage(imgs, img, colors_list):
 
     # Get index of image with closes dominant BGR color
     # closest_img_index = getClosestColor(colors_list, img_color)
-    closest_img_index = getClosestColorMine(colors_list, img_color)
-
+    # closest_img_index = getClosestColorMine(colors_list, img_color)
+    closest_img_index = getClosestImage(colors_list, img_color, TREE)
     # Resize chosen image to match size of cell
     img = cv2.resize(imgs[closest_img_index], [img.shape[1], img.shape[0]])
     
@@ -159,7 +165,7 @@ def createImgFromCells(cells, org_img, N):
     # Transform rows into Image
     img = np.concatenate(img_rows)
 
-    cv2.imshow("img new", img)
+    cv2.imshow("Mosaic image", img)
     return img
 
 sample_img = getSample()
@@ -172,6 +178,9 @@ sample_cells = divideImage(sample_img, N=GRID_SIZE)
 
 images_colors = getColorsOfImages(images)
 
+# Define KDTree object
+TREE = spatial.KDTree(images_colors)
+
 # Epty list to store cells of new image
 img_new_cells = []
 
@@ -181,9 +190,9 @@ for i,cell in enumerate(sample_cells):
     # print(f"cell color {cell_color}")
 
     # Replace current cell with new Image
-    img_new_cells.append(pickSubImage(images, cell, images_colors))
+    img_new_cells.append(pickSubImage(images, cell, images_colors, TREE))
 
 img_new = createImgFromCells(img_new_cells, sample_img, GRID_SIZE)
-
+cv2.imwrite("kfcmosaic.png", img_new)
 cv2.waitKey()
 cv2.destroyAllWindows()
