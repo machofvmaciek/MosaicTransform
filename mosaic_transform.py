@@ -9,13 +9,20 @@ from pathlib import Path
 # Constants
 DIR_BASE = Path().absolute()
 DIR_IMAGES = DIR_BASE / "images"
-GRID_SIZE = 20
+DIR_POKEMONS = DIR_BASE / "pokemon_dataset"
+DIR_FLOWERS = DIR_BASE / "flowers"
+DIR_TREES = DIR_BASE / "TREES"
+
+DIR_DATASET = DIR_TREES
+GRID_SIZE = 100
 
 def getSample():
     """Function used to load sample image
     """
-    PATH_IMG = DIR_BASE / "dog_1.png"
-    PATH_IMG = DIR_BASE / "combo.png"
+    # PATH_IMG = DIR_BASE / "dog_1.png"
+    # PATH_IMG = DIR_BASE / "combo.png"
+    PATH_IMG = DIR_BASE / "kfc.png"
+    PATH_IMG = DIR_BASE / "Tree.jpg"
     
     try:
         img = cv2.imread(str(PATH_IMG))
@@ -29,7 +36,7 @@ def getImages():
     """Function used to load images used to replace original image
     """
     # Get all files from images directory
-    PATHS = Path(DIR_IMAGES).glob('**/*')
+    PATHS = Path(DIR_DATASET).glob('**/*')
     
     FILES = [file for file in PATHS if file.is_file()]
     
@@ -38,7 +45,6 @@ def getImages():
     for file in FILES:
         try:
             images.append(cv2.imread(str(file)))
-            print(file)
         except:
             print(f"Failed to open {file}")
             sys.exit()
@@ -86,31 +92,36 @@ def divideImage(img, N=20):
     return cells
 
 def getClosestColor(colors_list, color):
+    """Function returning index and dominant color of image with closest dominant color
+    """
     colors_list = np.array(colors_list)
-    print(f"colors list \n{colors_list}")
+    
     color = np.array(color)
     distances = np.sqrt(np.sum((colors_list - color)**2, axis=1))
 
     index_of_smallest_dist = np.where(distances==np.amin(distances))
-    print(f"index_of_smallest_dist {index_of_smallest_dist}")
-
+    # print(index_of_smallest_dist[0][0])
+    # print(f"index_of_smallest_dist {int(index_of_smallest_dist[0])}")
+    
     smallest_dist = colors_list[index_of_smallest_dist]
     smallest_dist = smallest_dist[0]
-    print(f"smallest dist {smallest_dist}")
-    # print(smallest_dist[::-1])
+    # print(f"smallest dist {smallest_dist}")
     
-    return int(index_of_smallest_dist[0]), smallest_dist
-    # return None, smallest_dist
-    # return int(index_of_smallest_dist[0]), smallest_dist
+    # return int(index_of_smallest_dist[0][0])
+    return index_of_smallest_dist[0][0]
 
-def getAverageRGB(image):
-    im = np.array(image)
-    w, h, d = im.shape
-    return (tuple(np.average(im.reshape(w * h, d), axis=0)))
+def pickSubImage(imgs, img, colors_list):
+    """Function choosing image to replace original image based on dominant BGR color
+    """
+    # Calculate domiant RGB color of given image
+    img_color = getDominantColor(img)
 
-def pickSubImage(imgs, img):
+    # Get index of image with closes dominant BGR color
+    closest_img_index = getClosestColor(colors_list, img_color)
 
-    img = cv2.resize(imgs[0], [img.shape[1], img.shape[0]])
+    # Resize chosen image to match size of cell
+    img = cv2.resize(imgs[closest_img_index], [img.shape[1], img.shape[0]])
+    
     return img
 
 def createImgFromCells(cells, org_img, N):
@@ -148,27 +159,12 @@ img_new_cells = []
 for i,cell in enumerate(sample_cells):
 
     cell_color = getDominantColor(cell)
-
-    print(f"cell color {cell_color}")
-
-    # _, closestcolor = getClosestColor(images_colors, cell_color)
-    # cv2.imshow(f"{closestcolor}", cell)
+    # print(f"cell color {cell_color}")
 
     # Replace current cell with new Image
-    img_new_cells.append(pickSubImage(images, cell))
-    # img_new_cells.append(sample_cells[i])
-
-
-    # if i==4:
-    #     break
+    img_new_cells.append(pickSubImage(images, cell, images_colors))
 
 img_new = createImgFromCells(img_new_cells, sample_img, GRID_SIZE)
 
-
-cv2.imshow("cell 0", img_new_cells[0])
 cv2.waitKey()
 cv2.destroyAllWindows()
-
-"""
-cropped = img[start_row:end_row, start_col:end_col]
-"""
