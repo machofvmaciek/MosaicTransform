@@ -16,20 +16,23 @@ DIR_TREES = DIR_BASE / "Trees"
 DIR_BUTTERFLIES = DIR_BASE / "butterflies"
 DIR_PEOPLES = DIR_BASE / "Peoples"
 DIR_DOGS = DIR_BASE / "dogs"
+DIR_COMBO = DIR_BASE / "Database"
 
-DIR_DATASET = DIR_DOGS
-GRID_SIZE = 120
+DIR_DATASET = DIR_COMBO
+GRID_SIZE = 60
+RESIZE_RATIO = 5
 
 def getSample():
     """Function used to load sample image
     """
-    PATH_IMG = DIR_BASE / "dog_1.png"
-    # PATH_IMG = DIR_BASE / "combo.png"
+    # PATH_IMG = DIR_BASE / "dog_1.png"
+    # PATH_IMG = DIR_BASE / "combo1.png"
     # PATH_IMG = DIR_BASE / "kfc.png"
-    # PATH_IMG = DIR_BASE / "Tree.jpg"
+    PATH_IMG = DIR_BASE / "Tree.jpg"
     # PATH_IMG = DIR_BASE / "butterfly.jpg"
     # PATH_IMG = DIR_BASE / "tree_synt.png"
     # PATH_IMG = DIR_BASE / "tony1.png"
+    # PATH_IMG = DIR_BASE / "minecraft_steve.png"
     
     try:
         img = cv2.imread(str(PATH_IMG))
@@ -58,6 +61,10 @@ def getImages():
     
     print(f"Loaded {len(images)} images")
     return images
+
+def resizeImage(img, RATIO):
+    dimensions = (int(img.shape[1] * RATIO/100), int(img.shape[0] * RATIO/100))
+    return cv2.resize(img, dimensions, interpolation=cv2.INTER_AREA)
 
 def getDominantColor(img):
     """Function used to calculate dominant color from given image. Image must be <numpy.ndarray> type
@@ -134,48 +141,53 @@ def getClosestImage(colors_list, color, TREE) :
 
     return closest[1]
 
-def pickSubImage(imgs, img, colors_list, TREE):
+def pickSubImage(imgs, img_color, colors_list, TREE):
     """Function choosing image to replace original image based on dominant BGR color
     """
-    # Calculate domiant RGB color of given image
-    img_color = getDominantColor(img)
-
     # Get index of image with closes dominant BGR color
-    # closest_img_index = getClosestColor(colors_list, img_color)
     # closest_img_index = getClosestColorMine(colors_list, img_color)
-    closest_img_index = getClosestImage(colors_list, img_color, TREE)
-    # Resize chosen image to match size of cell
-    img = cv2.resize(imgs[closest_img_index], [img.shape[1], img.shape[0]])
     
-    return img
+    closest_img_index = getClosestImage(colors_list, img_color, TREE)
 
-def createImgFromCells(cells, org_img, N):
+    # Resize chosen image to match size of cell
+    img_chosen = cv2.resize(imgs[closest_img_index], [20, 20])
+    
+    return img_chosen
+
+def createImgFromCells(cells, org_img, org_img_dims):
     """Function converting list of cells into image with corresponding shape as org_img
     """
     # Create yet empty Array to store reproduced Image
-    img = np.empty_like(org_img)
+    # img = np.empty_like(org_img)
+    img = np.zeros((org_img_dims[0]*20, org_img_dims[1]*20))
 
     # List containing rows of new Image
     img_rows = []
 
     # Create rows of new Image and write them into a list
-    for i in range(N):
-        img_rows.append(np.concatenate(cells[(i*N):(i*N+N)], axis=1))
-
+    for i in range(org_img_dims[1]):
+        # img_rows.append(np.concatenate(cells[(i*N):(i*N+N)], axis=1))
+        img_rows.append(np.concatenate(cells[(i*org_img_dims[0]):(i*org_img_dims[0]+org_img_dims[0])], axis=1))
+        
+    print(len(img_rows))
+    print(len(img_rows[0]))
     # Transform rows into Image
     img = np.concatenate(img_rows)
 
     cv2.imshow("Mosaic image", img)
     return img
 
+
 sample_img = getSample()
 
 cv2.imshow("Original image", sample_img)
 # sample_img = cv2.resize(sample_img, [600, 480])
 
-images = getImages()
-sample_cells = divideImage(sample_img, N=GRID_SIZE)
+sample_img = resizeImage(sample_img, RESIZE_RATIO)
+cv2.imshow("resized", sample_img)
 
+# Load images and get its colors
+images = getImages()
 images_colors = getColorsOfImages(images)
 
 # Define KDTree object
@@ -184,15 +196,55 @@ TREE = spatial.KDTree(images_colors)
 # Epty list to store cells of new image
 img_new_cells = []
 
-for i,cell in enumerate(sample_cells):
+image_dims = (sample_img.shape[1], sample_img.shape[0])
+print(image_dims)
+print(image_dims[1]-1)
+print(image_dims[0]-1)
+imax = image_dims[0]-1
+jmax = image_dims[1]-1
+print(imax, jmax)
+for i in range(0,image_dims[1]):
+    for j in range(0,image_dims[0]):
+        [b, g, r] = sample_img[i][j]
+        color = [b, g, r]
+        img_new_cells.append(pickSubImage(images, color, images_colors, TREE))
+# for j in range(jmax):
+#     for i in range(imax):
+#         print(i, j)
+#         [b, g, r] = sample_img[i][j]
+#         color = [b, g, r]
+#         img_new_cells.append(pickSubImage(images, color, images_colors, None))
+        
 
-    cell_color = getDominantColor(cell)
-    # print(f"cell color {cell_color}")
+# cv2.imshow("chosen img", img_new_cells[0])
+# print(len(img_new_cells))
+img_new = createImgFromCells(img_new_cells, sample_img, image_dims)
+print(img_new.shape)
+cv2.imwrite("treemosaic.png", img_new)
 
-    # Replace current cell with new Image
-    img_new_cells.append(pickSubImage(images, cell, images_colors, TREE))
+# color = getDominantColor(sample_img[100])
+# print(color)
+# 
+# sample_cells = divideImage(sample_img, N=GRID_SIZE)
 
-img_new = createImgFromCells(img_new_cells, sample_img, GRID_SIZE)
-cv2.imwrite("kfcmosaic.png", img_new)
+# images_colors = getColorsOfImages(images)
+
+
+
+
+
+# for i,cell in enumerate(sample_cells):
+
+#     cell_color = getDominantColor(cell)
+#     # print(f"cell color {cell_color}")
+
+#     # Replace current cell with new Image
+#     img_new_cells.append(pickSubImage(images, cell, images_colors, TREE))
+
+
 cv2.waitKey()
 cv2.destroyAllWindows()
+"""
+dims =  (width, height)
+        (szerokosc, wysokosc)
+"""
