@@ -21,19 +21,19 @@ DIR_COMBO = DIR_BASE / "Database"
 DIR_DATASET = DIR_COMBO
 
 TILE_SIZE = 40
-RESIZE_RATIO = 20
+# RESIZE_RATIO = 10
 
-def getSample() -> "np.ndarray":
+def getSample(img_name: str) -> "np.ndarray":
     """Function used to load sample image.
 
     Args:
-        None
+        img_name: name of the image to be mosaiced. Image must be present in the same directory as script
     
     Returns:
         img: BGR image to be mosaiced
     """
 
-    PATH_IMG = DIR_BASE / "dog_1.png"
+    # PATH_IMG = DIR_BASE / "dog_1.png"
     # PATH_IMG = DIR_BASE / "combo1.png"
     # PATH_IMG = DIR_BASE / "kfc.png"
     # PATH_IMG = DIR_BASE / "macos_wallpaper.png"
@@ -43,6 +43,7 @@ def getSample() -> "np.ndarray":
     # PATH_IMG = DIR_BASE / "tony1.png"
     # PATH_IMG = DIR_BASE / "minecraft_steve.png"
     # PATH_IMG = DIR_BASE / "smieja.png"
+    PATH_IMG = DIR_BASE / img_name
     
     try:
         img = cv2.imread(str(PATH_IMG))
@@ -178,37 +179,42 @@ def getDominantColor(imgs: list[np.ndarray]) -> list[np.ndarray]:
 
     return colors
 
-# Load and display sample to be mosaiced
-sample_img = getSample()
-cv2.imshow("Original image", sample_img)
+def main(IMG_NAME, RESIZE_RATIO, FLAG_SAVE_IMAGE):
+    
+    # Load and display sample to be mosaiced
+    sample_img = getSample(IMG_NAME)
+    cv2.imshow("Original image", sample_img)
 
-# Load images and calculate their dominant colors
-images = getImages(DIR_DATASET)
-images_colors = getDominantColor(images)
+    # Load images and calculate their dominant colors
+    images = getImages(DIR_DATASET)
+    images_colors = getDominantColor(images)
 
-# Resize the sample accrodingly
-sample_img = resizeImage(sample_img, RESIZE_RATIO)
-image_dims = (sample_img.shape[1], sample_img.shape[0])
+    # Resize the sample accrodingly
+    sample_img = resizeImage(sample_img, RESIZE_RATIO)
+    image_dims = (sample_img.shape[1], sample_img.shape[0])
 
-# Define KDTree object
-TREE = spatial.KDTree(images_colors)
+    # Define KDTree object
+    TREE = spatial.KDTree(images_colors)
 
-# Empty list to store photos replacing pixels
-img_new_cells = list()
+    # Empty list to store photos replacing pixels
+    img_new_cells = list()
 
-# Iterate through image
-for i in range(0,image_dims[1]):
-    for j in range(0,image_dims[0]):
-        # Get values of cuurent pixel
-        [b, g, r] = sample_img[i][j]
-        color = [b, g, r]
-        
-        # Pick image replacing pixel
-        img_new_cells.append(pickSubImage(images, color, images_colors, TREE, TILE_SIZE))
+    # Iterate through image
+    for i in range(0,image_dims[1]):
+        for j in range(0,image_dims[0]):
+            # Get values of cuurent pixel
+            [b, g, r] = sample_img[i][j]
+            color = [b, g, r]
+            
+            # Pick image replacing pixel
+            img_new_cells.append(pickSubImage(images, color, images_colors, TREE, TILE_SIZE))
 
-# Produce a new image
-img_new = createImgFromCells(img_new_cells, image_dims, TILE_SIZE)
-cv2.imwrite("treemosaic.png", img_new)
+    # Produce a new image
+    img_new = createImgFromCells(img_new_cells, image_dims, TILE_SIZE)
 
-cv2.waitKey()
-cv2.destroyAllWindows()
+    if FLAG_SAVE_IMAGE:
+        img_mosaic_name = IMG_NAME + "_mosaic"
+        cv2.imwrite(img_mosaic_name, img_new)
+
+    cv2.waitKey()
+    cv2.destroyAllWindows()
