@@ -3,6 +3,7 @@ import sys
 import cv2
 import re
 import numpy as np
+import time
 
 from pathlib import Path
 from scipy import spatial
@@ -186,7 +187,9 @@ def getDominantColor(imgs: list[np.ndarray]) -> list[np.ndarray]:
     return colors
 
 def main(IMG_NAME, RESIZE_RATIO, FLAG_SAVE_IMAGE, FLAG_USE_MSE):
-    
+    # Save start time
+    time_start = time.perf_counter()
+
     # Load and display sample to be mosaiced
     sample_img = getSample(IMG_NAME)
     cv2.imshow("Original image", sample_img)
@@ -221,6 +224,8 @@ def main(IMG_NAME, RESIZE_RATIO, FLAG_SAVE_IMAGE, FLAG_USE_MSE):
 
     # Produce a new image
     img_new = createImgFromCells(img_new_cells, image_dims, TILE_SIZE)
+
+    print(f"Mosaicing an image took {time.perf_counter() - time_start} seconds")
 
     if FLAG_SAVE_IMAGE:
         img_mosaic_name = re.sub(r'\.', '_mosaic.', IMG_NAME)
