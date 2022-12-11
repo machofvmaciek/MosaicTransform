@@ -1,7 +1,7 @@
 import os
 import sys
 import cv2
-import random
+import re
 import numpy as np
 
 from pathlib import Path
@@ -9,19 +9,9 @@ from scipy import spatial
 
 # Constants
 DIR_BASE = Path().absolute()
-DIR_IMAGES = DIR_BASE / "images"
-DIR_POKEMONS = DIR_BASE / "pokemon_dataset"
-DIR_FLOWERS = DIR_BASE / "flowers"
-DIR_TREES = DIR_BASE / "Trees"
-DIR_BUTTERFLIES = DIR_BASE / "butterflies"
-DIR_PEOPLES = DIR_BASE / "Peoples"
-DIR_DOGS = DIR_BASE / "dogs"
-DIR_COMBO = DIR_BASE / "Database"
-
-DIR_DATASET = DIR_COMBO
+DIR_DATASET = DIR_BASE / "Database"
 
 TILE_SIZE = 40
-# RESIZE_RATIO = 10
 
 def getSample(img_name: str) -> "np.ndarray":
     """Function used to load sample image.
@@ -33,16 +23,6 @@ def getSample(img_name: str) -> "np.ndarray":
         img: BGR image to be mosaiced
     """
 
-    # PATH_IMG = DIR_BASE / "dog_1.png"
-    # PATH_IMG = DIR_BASE / "combo1.png"
-    # PATH_IMG = DIR_BASE / "kfc.png"
-    # PATH_IMG = DIR_BASE / "macos_wallpaper.png"
-    # PATH_IMG = DIR_BASE / "valley.png"
-    # PATH_IMG = DIR_BASE / "butterfly.jpg"
-    # PATH_IMG = DIR_BASE / "tree_synt.png"
-    # PATH_IMG = DIR_BASE / "tony1.png"
-    # PATH_IMG = DIR_BASE / "minecraft_steve.png"
-    # PATH_IMG = DIR_BASE / "smieja.png"
     PATH_IMG = DIR_BASE / img_name
     
     try:
@@ -72,7 +52,7 @@ def getImages(DIR_DATASET: str) -> list[np.ndarray]:
     for file in FILES:
         try:
             images.append(cv2.imread(str(file)))
-        except:
+        except ValueError:
             print(f"Failed to open {file}")
             sys.exit()
     
@@ -113,7 +93,7 @@ def pickSubImage(   imgs: list[np.ndarray],
                     colors_list: list[np.ndarray],
                     TREE: spatial.KDTree,
                     TILE_SIZE: int) -> np.ndarray:
-    """Function picking image to replace pixel based on dominant BGR color.
+    """Function picking image to replace pixel based on dominant BGR color. Uses KDTree to pick.
 
     Args:
         imgs: list of images from dataset
@@ -133,7 +113,33 @@ def pickSubImage(   imgs: list[np.ndarray],
     
     return img_chosen
 
-# def createImgFromCells(cells: list[np.ndarray], org_img: np.ndarray, org_img_dims: tuple(int), TILE_SIZE: int):
+def pickSubImageMSE(imgs: list[np.ndarray],
+                    pixel_color: list[int],
+                    colors_list: list[np.ndarray],
+                    TILE_SIZE: int) -> np.ndarray:
+    """Function picking image to replace pixel based on dominant BGR color. Uses MSE to pick.
+
+    Args:
+        imgs: list of images from dataset
+        pixel_color: list containing BGR values of the pixel
+        colors_list: list containing dominant color of every image in dataset
+        TILE_SIZE: size of replacing image(tile)
+
+    Returns:
+        img_chosen: approprietly resized image replacing a pixel
+    """
+    errors = []
+    for color_in_list in colors_list:
+        errors.append((int((color_in_list[0] - pixel_color[0]))**2 + int((color_in_list[1] - pixel_color[1]))**2 + int((color_in_list[2] - pixel_color[2]))**2)**(0.5))
+    
+    min_err = min(errors)
+    min_err_index = errors.index(min_err)
+
+    # Resize chosen image to match size of cell
+    img_chosen = cv2.resize(imgs[min_err_index], [TILE_SIZE, TILE_SIZE])
+
+    return img_chosen
+
 def createImgFromCells(cells: list[np.ndarray], org_img_dims: tuple[int], TILE_SIZE: int) -> np.ndarray:
     """Function converting list of cells into image with corresponding shape as org_img
 
@@ -179,7 +185,7 @@ def getDominantColor(imgs: list[np.ndarray]) -> list[np.ndarray]:
 
     return colors
 
-def main(IMG_NAME, RESIZE_RATIO, FLAG_SAVE_IMAGE):
+def main(IMG_NAME, RESIZE_RATIO, FLAG_SAVE_IMAGE, FLAG_USE_MSE):
     
     # Load and display sample to be mosaiced
     sample_img = getSample(IMG_NAME)
@@ -193,8 +199,9 @@ def main(IMG_NAME, RESIZE_RATIO, FLAG_SAVE_IMAGE):
     sample_img = resizeImage(sample_img, RESIZE_RATIO)
     image_dims = (sample_img.shape[1], sample_img.shape[0])
 
-    # Define KDTree object
-    TREE = spatial.KDTree(images_colors)
+    if not FLAG_USE_MSE:
+        # Define KDTree object
+        TREE = spatial.KDTree(images_colors)
 
     # Empty list to store photos replacing pixels
     img_new_cells = list()
@@ -207,13 +214,16 @@ def main(IMG_NAME, RESIZE_RATIO, FLAG_SAVE_IMAGE):
             color = [b, g, r]
             
             # Pick image replacing pixel
-            img_new_cells.append(pickSubImage(images, color, images_colors, TREE, TILE_SIZE))
+            if FLAG_USE_MSE:
+                img_new_cells.append(pickSubImageMSE(images, color, images_colors, TILE_SIZE))
+            else:
+                img_new_cells.append(pickSubImage(images, color, images_colors, TREE, TILE_SIZE))
 
     # Produce a new image
     img_new = createImgFromCells(img_new_cells, image_dims, TILE_SIZE)
 
     if FLAG_SAVE_IMAGE:
-        img_mosaic_name = IMG_NAME + "_mosaic"
+        img_mosaic_name = re.sub(r'\.', '_mosaic.', IMG_NAME)
         cv2.imwrite(img_mosaic_name, img_new)
 
     cv2.waitKey()

@@ -4,23 +4,25 @@ import argparse
 import mosaic_transform
 
 FLAG_SAVE_IMAGE = False
+FLAG_USE_MSE = False
 RESIZE_RATIO_DEFAULT = 20
 
 
 parser = argparse.ArgumentParser(description="Create a mosaic from given image")
 
 parser.add_argument("img_name", type=str, metavar="image name", help="name of the image to be mosaiced. Example: 'dog.png'")
-parser.add_argument("-r" ,"--resize-ratio", type=int, metavar="", help="size of orignal image in percents. Default value is 20.")
+parser.add_argument("-r" ,"--resize-ratio", type=int, metavar="", help="size of orignal image in percents. Default value is 20")
 
 group = parser.add_mutually_exclusive_group()
 group.add_argument("-s", "--save-image", action="store_true", help="save mosaiced image into a file")
+group.add_argument("-mse", "--use-mse", action="store_true", help="use MSE to pick image")
 
 args = parser.parse_args()
 
-def run_mosaic_transform(img_name, RESIZE_RATIO, FLAG_SAVE_IMAGE):
+def run_mosaic_transform(img_name, RESIZE_RATIO, FLAG_SAVE_IMAGE, FLAG_USE_MSE):
     
     # Run mosaic_transform.py with provided arguments
-    mosaic_transform.main(img_name, RESIZE_RATIO, FLAG_SAVE_IMAGE)
+    mosaic_transform.main(img_name, RESIZE_RATIO, FLAG_SAVE_IMAGE, FLAG_USE_MSE)
     sys.exit()
 
 if __name__ == '__main__':
@@ -39,4 +41,7 @@ if __name__ == '__main__':
     if args.save_image:
         FLAG_SAVE_IMAGE = True
 
-    run_mosaic_transform(img_name, RESIZE_RATIO, FLAG_SAVE_IMAGE)
+    if args.use_mse:
+        FLAG_USE_MSE = True
+    
+    run_mosaic_transform(img_name, RESIZE_RATIO, FLAG_SAVE_IMAGE, FLAG_USE_MSE)
